@@ -327,7 +327,7 @@ export default function WorkHoursView({
   );
 
   return (
-    <div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 min-h-screen px-6 pt-4 pb-2">
+    <div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 pb-6">
       {/* Header with Date Picker and View Toggle */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">

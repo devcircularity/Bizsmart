@@ -15,20 +15,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setError('');
-  setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-  try {
-    await login(email.trim(), password);
-    router.push('/dashboard');
-  } catch (err: any) {
-    setError(err.message || 'Login failed. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    try {
+      await login(email.trim(), password);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50/50 via-white to-green-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-green-900/20 flex items-center justify-center p-4 relative overflow-hidden">
       {/* background visuals */}
@@ -54,40 +55,44 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* email */}
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-green-500 transition-colors duration-200" />
+              <div className="space-y-2">
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-slate-400" />
+                  <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Email</label>
                 </div>
                 <input
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white/50 dark:bg-slate-700/50 border border-slate-200/50 dark:border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 dark:focus:border-green-400 transition-all duration-300 text-slate-800 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  className="w-full px-4 py-4 bg-white/50 dark:bg-slate-700/50 border border-slate-200/50 dark:border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 dark:focus:border-green-400 transition-all duration-300 text-slate-800 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
                   required
                 />
               </div>
 
               {/* password */}
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-green-500 transition-colors duration-200" />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Lock className="h-5 w-5 text-slate-400" />
+                    <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Password</label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-4 bg-white/50 dark:bg-slate-700/50 border border-slate-200/50 dark:border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 dark:focus:border-green-400 transition-all duration-300 text-slate-800 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  className="w-full px-4 py-4 bg-white/50 dark:bg-slate-700/50 border border-slate-200/50 dark:border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 dark:focus:border-green-400 transition-all duration-300 text-slate-800 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
               </div>
 
               {/* error */}
@@ -119,7 +124,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
             <div className="mt-8 text-center">
               <p className="text-slate-600 dark:text-slate-400 text-sm">
-                Don’t have an account?{' '}
+                Don't have an account?{' '}
                 <button className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium transition-colors duration-200">
                   Sign up
                 </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Grid, List } from 'lucide-react';
+import { Grid, List, Filter } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import CardGrid from '../common/CardGrid';
 
@@ -11,7 +11,7 @@ export interface LeaveBalance {
   leave_type: string;
   total_allocated: number;
   used: number;
-  remaining: number;
+  remaining?: number; // Make this optional since we'll calculate it
   on_leave: boolean;
 }
 
@@ -24,34 +24,73 @@ interface LeaveBalanceViewProps {
 export default function LeaveBalanceView({ data: leaveBalances, loading, error }: LeaveBalanceViewProps) {
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
 
+  // Calculate remaining leaves on the frontend
+  const processedLeaveBalances = useMemo(() => {
+    return leaveBalances.map(balance => ({
+      ...balance,
+      remaining: Math.max(0, balance.total_allocated - balance.used), // Calculate remaining, ensure it's not negative
+      remaining_range: getRemainingRange(Math.max(0, balance.total_allocated - balance.used), balance.total_allocated), // Add range for filtering
+      utilization_range: getUtilizationRange(balance.used, balance.total_allocated) // Add utilization range
+    }));
+  }, [leaveBalances]);
+
+  // Helper function to categorize remaining leave
+  function getRemainingRange(remaining: number, total: number) {
+    if (total === 0) return 'no-allocation';
+    const percentage = (remaining / total) * 100;
+    if (percentage >= 80) return 'high'; // 80%+ remaining
+    if (percentage >= 50) return 'medium'; // 50-79% remaining
+    if (percentage >= 20) return 'low'; // 20-49% remaining
+    return 'critical'; // < 20% remaining
+  }
+
+  // Helper function to categorize leave utilization
+  function getUtilizationRange(used: number, total: number) {
+    if (total === 0) return 'no-allocation';
+    const percentage = (used / total) * 100;
+    if (percentage >= 80) return 'high-usage'; // 80%+ used
+    if (percentage >= 50) return 'medium-usage'; // 50-79% used
+    if (percentage >= 20) return 'low-usage'; // 20-49% used
+    return 'minimal-usage'; // < 20% used
+  }
+
   // Get unique departments for filter
   const departments = useMemo(() => {
-    const depts = [...new Set(leaveBalances.map(lb => lb.department))].sort();
+    const depts = [...new Set(processedLeaveBalances.map(lb => lb.department))].filter(Boolean).sort();
     return depts.map(dept => ({ value: dept, label: dept }));
-  }, [leaveBalances]);
+  }, [processedLeaveBalances]);
+
+  // Get unique leave types for filter
+  const leaveTypes = useMemo(() => {
+    const types = [...new Set(processedLeaveBalances.map(lb => lb.leave_type))].filter(Boolean).sort();
+    return types.map(type => ({ value: type, label: type }));
+  }, [processedLeaveBalances]);
 
   // Get remaining leave status color classes (theme-responsive)
   const getRemainingStatus = (remaining: number, total: number) => {
+    if (total === 0) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
     const percentage = (remaining / total) * 100;
-    if (percentage >= 70) return 'bg-[color:var(--color-success)] text-[color:var(--color-success-foreground)]';
-    if (percentage >= 40) return 'bg-[color:var(--color-warning)] text-[color:var(--color-warning-foreground)]';
-    return 'bg-[color:var(--color-error)] text-[color:var(--color-error-foreground)]';
+    if (percentage >= 70) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    if (percentage >= 40) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+    return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
   };
 
   // Get remaining leave status text color
   const getRemainingTextColor = (remaining: number, total: number) => {
+    if (total === 0) return 'text-gray-500 dark:text-gray-400';
     const percentage = (remaining / total) * 100;
-    if (percentage >= 70) return 'text-[color:var(--color-success)]';
-    if (percentage >= 40) return 'text-[color:var(--color-warning)]';
-    return 'text-[color:var(--color-error)]';
+    if (percentage >= 70) return 'text-green-600 dark:text-green-400';
+    if (percentage >= 40) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   // Get remaining leave status bg color for progress bar
   const getRemainingBgColor = (remaining: number, total: number) => {
+    if (total === 0) return 'bg-gray-400';
     const percentage = (remaining / total) * 100;
-    if (percentage >= 70) return 'bg-[color:var(--color-success)]';
-    if (percentage >= 40) return 'bg-[color:var(--color-warning)]';
-    return 'bg-[color:var(--color-error)]';
+    if (percentage >= 70) return 'bg-green-500';
+    if (percentage >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   // Define columns for the DataTable
@@ -80,7 +119,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
       sortable: true,
       width: 'w-36',
       render: (value: string) => (
-        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-[color:var(--color-info)] text-[color:var(--color-info-foreground)]">
+        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
           <div className="truncate">{value}</div>
         </span>
       )
@@ -91,7 +130,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
       sortable: true,
       width: 'w-32',
       render: (value: string) => (
-        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-[color:var(--color-muted)] text-[color:var(--color-muted-foreground)]">
+        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
           <div className="truncate">{value}</div>
         </span>
       )
@@ -111,7 +150,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
       sortable: true,
       width: 'w-20',
       render: (value: number) => (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-[color:var(--color-warning)] text-[color:var(--color-warning-foreground)]">
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
           {value}
         </span>
       )
@@ -135,8 +174,8 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
       render: (value: boolean) => (
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
           value 
-            ? 'bg-[color:var(--color-error)] text-[color:var(--color-error-foreground)]' 
-            : 'bg-[color:var(--color-success)] text-[color:var(--color-success-foreground)]'
+            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' 
+            : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
         }`}>
           {value ? 'On Leave' : 'Available'}
         </span>
@@ -144,12 +183,47 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
     }
   ];
 
-  // Define filters
+  // Define comprehensive filters
   const filters = [
     {
       key: 'department',
       label: 'Department',
       options: departments
+    },
+    {
+      key: 'leave_type',
+      label: 'Leave Type',
+      options: leaveTypes
+    },
+    {
+      key: 'on_leave',
+      label: 'Current Status',
+      options: [
+        { value: 'true', label: 'On Leave' },
+        { value: 'false', label: 'Available' }
+      ]
+    },
+    {
+      key: 'remaining_range',
+      label: 'Remaining Leave',
+      options: [
+        { value: 'high', label: 'High (80%+)' },
+        { value: 'medium', label: 'Medium (50-79%)' },
+        { value: 'low', label: 'Low (20-49%)' },
+        { value: 'critical', label: 'Critical (<20%)' },
+        { value: 'no-allocation', label: 'No Allocation' }
+      ]
+    },
+    {
+      key: 'utilization_range',
+      label: 'Leave Usage',
+      options: [
+        { value: 'high-usage', label: 'High Usage (80%+)' },
+        { value: 'medium-usage', label: 'Medium Usage (50-79%)' },
+        { value: 'low-usage', label: 'Low Usage (20-49%)' },
+        { value: 'minimal-usage', label: 'Minimal Usage (<20%)' },
+        { value: 'no-allocation', label: 'No Allocation' }
+      ]
     }
   ];
 
@@ -177,8 +251,8 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
           </div>
           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 flex-shrink-0 ${
             item.on_leave 
-              ? 'bg-[color:var(--color-error)] text-[color:var(--color-error-foreground)]' 
-              : 'bg-[color:var(--color-success)] text-[color:var(--color-success-foreground)]'
+              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' 
+              : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
           }`}>
             {item.on_leave ? 'On Leave' : 'Available'}
           </span>
@@ -186,7 +260,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
 
         {/* Leave Type */}
         <div className="mb-4">
-          <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-[color:var(--color-muted)] text-[color:var(--color-muted-foreground)]">
+          <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
             {item.leave_type}
           </span>
         </div>
@@ -198,11 +272,11 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Allocated</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-[color:var(--color-warning)]">{item.used}</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{item.used}</div>
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Used</div>
           </div>
           <div className="text-center">
-            <div className={`text-2xl font-bold ${getRemainingTextColor(item.remaining, item.total_allocated)}`}>
+            <div className={`text-2xl font-bold ${getRemainingTextColor(item.remaining!, item.total_allocated)}`}>
               {item.remaining}
             </div>
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Remaining</div>
@@ -214,13 +288,15 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
           <div className="flex justify-between text-sm">
             <span className="text-[color:var(--color-muted-foreground)]">Leave Usage</span>
             <span className="font-medium text-[color:var(--color-card-foreground)]">
-              {Math.round((item.remaining / item.total_allocated) * 100)}% left
+              {item.total_allocated > 0 ? Math.round((item.remaining! / item.total_allocated) * 100) : 0}% left
             </span>
           </div>
-          <div className="w-full bg-[color:var(--color-muted)] rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
             <div 
-              className={`h-3 rounded-full transition-all duration-300 ${getRemainingBgColor(item.remaining, item.total_allocated)}`}
-              style={{ width: `${Math.max(5, (item.remaining / item.total_allocated) * 100)}%` }}
+              className={`h-3 rounded-full transition-all duration-300 ${getRemainingBgColor(item.remaining!, item.total_allocated)}`}
+              style={{ 
+                width: `${item.total_allocated > 0 ? Math.max(5, (item.remaining! / item.total_allocated) * 100) : 0}%` 
+              }}
             ></div>
           </div>
         </div>
@@ -257,22 +333,25 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
   );
 
   return (
-<div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 min-h-screen px-6 pt-4 pb-2">      {/* Header with View Toggle */}
+    <div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 px-6 pt-4 pb-6">
+      {/* Header with View Toggle */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-semibold text-[color:var(--color-foreground)]">Leave Balances Report</h1>
           <p className="text-[color:var(--color-muted-foreground)] mt-1">
-            {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} employee leave balances
+            {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} employee leave balances with advanced filtering
           </p>
         </div>
         <ViewToggle />
       </div>
 
+
+
       {/* Content */}
       {viewMode === 'table' ? (
         <div className="bg-[color:var(--color-card)] rounded-lg shadow-[var(--shadow)] border border-[color:var(--color-border)] overflow-hidden">
           <DataTable
-            data={leaveBalances}
+            data={processedLeaveBalances}
             columns={columns}
             searchableFields={searchableFields}
             filters={filters}
@@ -287,7 +366,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
         </div>
       ) : (
         <CardGrid
-          data={leaveBalances}
+          data={processedLeaveBalances}
           searchableFields={searchableFields}
           filters={filters}
           loading={loading}

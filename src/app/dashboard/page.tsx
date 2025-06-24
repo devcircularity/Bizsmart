@@ -282,7 +282,6 @@ export default function FriendlyHRDashboard() {
     <div className="min-h-screen bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200">
       <div className="p-6 space-y-8 lg:max-h-screen lg:overflow-y-auto">
 
-
         {/* Date Selector */}
         <div className="flex items-center justify-center space-x-3 mt-6">
           <Calendar className="h-5 w-5 text-[color:var(--color-muted-foreground)]" />
@@ -432,38 +431,38 @@ export default function FriendlyHRDashboard() {
             </div>
           </div>
 
-          {/* Today's Champions */}
+          {/* Today's Champions - FIXED */}
           <div className="bg-[color:var(--color-card)] text-[color:var(--color-card-foreground)] rounded-2xl shadow-[var(--shadow-lg)] p-6 border border-[color:var(--color-border)]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-[color:var(--color-card-foreground)]">Today's Stats</h3>
               <Target className="h-5 w-5 text-[color:var(--color-primary)]" />
             </div>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-[color:var(--color-success)] bg-opacity-10 rounded-lg border border-[color:var(--color-success)] border-opacity-20">
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
                 <div className="flex items-center space-x-2">
-                  <Award className="h-4 w-4 text-[color:var(--color-success)]" />
-                  <span className="text-sm font-medium text-[color:var(--color-success)]">Full Day Workers</span>
+                  <Award className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">Full Day Workers</span>
                 </div>
-                <span className="text-lg font-bold text-[color:var(--color-success)]">{metrics.fullDayWorkers}</span>
+                <span className="text-lg font-bold text-green-800 dark:text-green-200">{metrics.fullDayWorkers}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-[color:var(--color-info)] bg-opacity-10 rounded-lg border border-[color:var(--color-info)] border-opacity-20">
+              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                 <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-[color:var(--color-info)]" />
-                  <span className="text-sm font-medium text-[color:var(--color-info)]">Part Time Workers</span>
+                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Part Time Workers</span>
                 </div>
-                <span className="text-lg font-bold text-[color:var(--color-info)]">{metrics.partTimeWorkers}</span>
+                <span className="text-lg font-bold text-blue-800 dark:text-blue-200">{metrics.partTimeWorkers}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-[color:var(--color-primary)] bg-opacity-10 rounded-lg border border-[color:var(--color-primary)] border-opacity-20">
+              <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                 <div className="flex items-center space-x-2">
-                  <Zap className="h-4 w-4 text-[color:var(--color-primary)]" />
-                  <span className="text-sm font-medium text-[color:var(--color-primary)]">Total Hours</span>
+                  <Zap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Total Hours</span>
                 </div>
-                <span className="text-lg font-bold text-[color:var(--color-primary)]">{metrics.totalHoursToday.toFixed(0)}</span>
+                <span className="text-lg font-bold text-purple-800 dark:text-purple-200">{metrics.totalHoursToday.toFixed(0)}</span>
               </div>
             </div>
           </div>
 
-          {/* Smart Alerts */}
+          {/* Smart Alerts - FIXED */}
           <div className="bg-[color:var(--color-card)] text-[color:var(--color-card-foreground)] rounded-2xl shadow-[var(--shadow-lg)] p-6 border border-[color:var(--color-border)]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-[color:var(--color-card-foreground)]">Smart Alerts</h3>
@@ -471,38 +470,38 @@ export default function FriendlyHRDashboard() {
             </div>
             <div className="space-y-3">
               {metrics.leaveUtilization > 80 && (
-                <div className="flex items-start space-x-3 p-3 bg-[color:var(--color-error)] bg-opacity-10 rounded-lg border-l-4 border-[color:var(--color-error)]">
-                  <AlertTriangle className="h-4 w-4 text-[color:var(--color-error)] mt-0.5" />
+                <div className="flex items-start space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border-l-4 border-red-500">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-[color:var(--color-error)]">High Leave Usage</p>
-                    <p className="text-xs text-[color:var(--color-error)] opacity-80">Consider reviewing leave policies</p>
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">High Leave Usage</p>
+                    <p className="text-xs text-red-600 dark:text-red-400">Consider reviewing leave policies</p>
                   </div>
                 </div>
               )}
               {metrics.attendanceRate < 70 && (
-                <div className="flex items-start space-x-3 p-3 bg-[color:var(--color-warning)] bg-opacity-10 rounded-lg border-l-4 border-[color:var(--color-warning)]">
-                  <AlertTriangle className="h-4 w-4 text-[color:var(--color-warning)] mt-0.5" />
+                <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-[color:var(--color-warning)]">Low Attendance Alert</p>
-                    <p className="text-xs text-[color:var(--color-warning)] opacity-80">Attendance below target threshold</p>
+                    <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Low Attendance Alert</p>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">Attendance below target threshold</p>
                   </div>
                 </div>
               )}
               {metrics.attendanceRate >= 85 && metrics.leaveUtilization <= 70 && (
-                <div className="flex items-start space-x-3 p-3 bg-[color:var(--color-success)] bg-opacity-10 rounded-lg border-l-4 border-[color:var(--color-success)]">
-                  <UserCheck className="h-4 w-4 text-[color:var(--color-success)] mt-0.5" />
+                <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+                  <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-[color:var(--color-success)]">All Systems Green! 🎉</p>
-                    <p className="text-xs text-[color:var(--color-success)] opacity-80">Everything looks great today</p>
+                    <p className="text-sm font-medium text-green-700 dark:text-green-300">All Systems Green! 🎉</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">Everything looks great today</p>
                   </div>
                 </div>
               )}
               {metrics.totalEmployees === 0 && (
-                <div className="flex items-start space-x-3 p-3 bg-[color:var(--color-info)] bg-opacity-10 rounded-lg border-l-4 border-[color:var(--color-info)]">
-                  <Users className="h-4 w-4 text-[color:var(--color-info)] mt-0.5" />
+                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                  <Users className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-[color:var(--color-info)]">No Data Available</p>
-                    <p className="text-xs text-[color:var(--color-info)] opacity-80">Check your API configuration</p>
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-300">No Data Available</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">Check your API configuration</p>
                   </div>
                 </div>
               )}

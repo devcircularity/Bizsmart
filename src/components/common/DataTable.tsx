@@ -170,16 +170,16 @@ export default function DataTable<T = any>({
             </div>
           ))}
           
-          {/* Search */}
+          {/* Search with external icon */}
           {searchableFields.length > 0 && (
-            <div className="relative min-w-0 flex-shrink-0">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--color-foreground)] h-4 w-4" />
+            <div className="flex items-center space-x-2 min-w-0 flex-shrink-0">
+              <Search className="h-5 w-5 text-[color:var(--color-foreground)] flex-shrink-0" />
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-[color:var(--color-foreground)] rounded-lg focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent w-64 max-w-full"
+                className="px-4 py-2 border border-[color:var(--color-foreground)] rounded-lg focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent w-64 max-w-full"
               />
             </div>
           )}
@@ -211,7 +211,7 @@ export default function DataTable<T = any>({
       {/* Table Container */}
       <div className="bg-[color:var(--color-background)] rounded-lg shadow overflow-hidden w-full">
         <div className="overflow-x-auto">
-          <div className="max-h-[calc(100vh-20rem)] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto">
             <table className="w-full min-w-fit divide-y divide-[color:var(--color-foreground)]">
               <thead className="bg-[color:var(--color-background)] sticky top-0 z-10">
                 <tr>
