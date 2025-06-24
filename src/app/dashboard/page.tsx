@@ -182,7 +182,8 @@ export default function FriendlyHRDashboard() {
     // Work hours analysis
     const totalHoursToday = workHours.reduce((sum, wh) => sum + (wh.total_hours || 0), 0);
     const avgHoursToday = workHours.length > 0 ? totalHoursToday / workHours.length : 0;
-    const presentToday = workHours.filter(wh => wh.time_in && wh.time_in !== '').length;
+    // Count unique employees with any work hour entry for presentToday
+    const presentToday = new Set(workHours.map(wh => wh.employee)).size;
     const fullDayWorkers = workHours.filter(wh => wh.total_hours >= 8).length;
     const partTimeWorkers = workHours.filter(wh => wh.total_hours > 0 && wh.total_hours < 8).length;
 
@@ -220,7 +221,7 @@ export default function FriendlyHRDashboard() {
         department: dept,
         count,
         percentage: ((count / metrics.totalEmployees) * 100).toFixed(1),
-        onLeave: leaveBalances.filter(lb => lb.department === dept && lb.on_leave).length,
+        onLeave: new Set(leaveBalances.filter(lb => lb.department === dept && lb.on_leave).map(lb => lb.employee_name)).size,
         present: workHours.filter(wh => wh.department === dept && wh.time_in).length
       }))
       .sort((a, b) => b.count - a.count)
