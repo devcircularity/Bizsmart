@@ -24,14 +24,18 @@ interface LeaveBalanceViewProps {
 export default function LeaveBalanceView({ data: leaveBalances, loading, error }: LeaveBalanceViewProps) {
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
 
-  // Calculate remaining leaves on the frontend
+  // Calculate remaining leaves on the frontend, showing ALL employees
   const processedLeaveBalances = useMemo(() => {
-    return leaveBalances.map(balance => ({
-      ...balance,
-      remaining: Math.max(0, balance.total_allocated - balance.used), // Calculate remaining, ensure it's not negative
-      remaining_range: getRemainingRange(Math.max(0, balance.total_allocated - balance.used), balance.total_allocated), // Add range for filtering
-      utilization_range: getUtilizationRange(balance.used, balance.total_allocated) // Add utilization range
-    }));
+    return leaveBalances
+      // Removed the filter that was only showing employees on leave
+      .map(balance => ({
+        ...balance,
+        remaining: Math.max(0, balance.total_allocated - balance.used),
+        remaining_range: getRemainingRange(Math.max(0, balance.total_allocated - balance.used), balance.total_allocated),
+        utilization_range: getUtilizationRange(balance.used, balance.total_allocated),
+        // Add string version for filtering
+        on_leave_string: balance.on_leave.toString() // Convert boolean to string for filtering
+      }));
   }, [leaveBalances]);
 
   // Helper function to categorize remaining leave
@@ -183,7 +187,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
     }
   ];
 
-  // Define comprehensive filters
+  // Define comprehensive filters with fixed boolean handling
   const filters = [
     {
       key: 'department',
@@ -196,7 +200,7 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
       options: leaveTypes
     },
     {
-      key: 'on_leave',
+      key: 'on_leave_string', // Use the string field for filtering
       label: 'Current Status',
       options: [
         { value: 'true', label: 'On Leave' },
@@ -344,8 +348,6 @@ export default function LeaveBalanceView({ data: leaveBalances, loading, error }
         </div>
         <ViewToggle />
       </div>
-
-
 
       {/* Content */}
       {viewMode === 'table' ? (
