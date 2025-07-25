@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Grid, List, Calendar, Clock, CalendarDays, Download } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import CardGrid from '../common/CardGrid';
@@ -41,40 +41,70 @@ export default function WorkHoursView({
   const [isExporting, setIsExporting] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
 
+  // Debug logging to see what data we're receiving
+  useEffect(() => {
+    console.log('=== WorkHoursView Debug Info ===');
+    console.log('Raw workHours data:', workHours);
+    console.log('workHours length:', workHours?.length || 0);
+    console.log('startDate:', startDate);
+    console.log('endDate:', endDate);
+    console.log('loading:', loading);
+    console.log('error:', error);
+    
+    if (workHours && workHours.length > 0) {
+      console.log('Sample workHours record:', workHours[0]);
+      console.log('All dates in data:', workHours.map(wh => wh.date).filter(Boolean));
+    }
+    console.log('================================');
+  }, [workHours, startDate, endDate, loading, error]);
+
   // Check if we're showing a date range
   const isDateRange = startDate !== endDate;
 
   // NO AGGREGATION - Just show individual records with date information
   const processedData = useMemo(() => {
+    console.log('Processing data...');
+    console.log('Input workHours:', workHours);
+    console.log('Input workHours length:', workHours?.length || 0);
+    
     if (!workHours || workHours.length === 0) {
+      console.log('No workHours data to process');
       return [];
     }
 
     // For both single date and date range, show individual daily records
-    const processed = workHours.map(record => ({
-      ...record,
-      // Ensure date is always available for display
-      date: record.date || startDate
-    }));
+    const processed = workHours.map(record => {
+      const processedRecord = {
+        ...record,
+        // Ensure date is always available for display
+        date: record.date || startDate
+      };
+      console.log('Processed record:', processedRecord);
+      return processedRecord;
+    });
+    
+    console.log('Final processed data:', processed);
+    console.log('Final processed data length:', processed.length);
     
     return processed;
   }, [workHours, startDate]);
 
   // Get unique departments for filter
   const departments = useMemo(() => {
-    const depts = [...new Set(processedData.map(wh => wh.department))].filter(Boolean).sort();
+    const depts = [...new Set(processedData.map(wh => wh.department))].sort();
     return depts.map(dept => ({ value: dept, label: dept }));
   }, [processedData]);
 
   // Get unique designations for filter
   const designations = useMemo(() => {
-    const desigs = [...new Set(processedData.map(wh => wh.designation))].filter(Boolean).sort();
+    const desigs = [...new Set(processedData.map(wh => wh.designation))].sort();
     return desigs.map(desig => ({ value: desig, label: desig }));
   }, [processedData]);
 
   // Get unique dates for filter (available for both single date and date range)
   const dates = useMemo(() => {
     const dateList = [...new Set(workHours.map(wh => wh.date).filter(Boolean))].sort();
+    console.log('Available dates for filter:', dateList);
     return dateList.map(date => ({ value: date!, label: new Date(date!).toLocaleDateString() }));
   }, [workHours]);
 
@@ -87,7 +117,7 @@ export default function WorkHoursView({
     const totalRecords = processedData.length;
     const avgHoursPerRecord = totalRecords > 0 ? totalHours / totalRecords : 0;
 
-    return {
+    const stats = {
       totalEmployees,
       totalHours,
       currentlyClocked,
@@ -95,6 +125,9 @@ export default function WorkHoursView({
       totalRecords,
       avgHoursPerRecord
     };
+    
+    console.log('Summary stats:', stats);
+    return stats;
   }, [processedData]);
 
   // Fixed time formatting - expects HH:MM format from backend
@@ -154,12 +187,16 @@ export default function WorkHoursView({
 
   // Handle PDF export
   const handleExportPDF = async (dataToExport: WorkHour[]) => {
+    console.log('Export button clicked, data to export:', dataToExport);
+    
     setIsExporting(true);
     try {
       if (!dataToExport || dataToExport.length === 0) {
         throw new Error('No data available to export');
       }
 
+      console.log('Calling exportWorkHoursToPDF...');
+      
       await exportWorkHoursToPDF({
         data: dataToExport,
         startDate,
@@ -176,12 +213,15 @@ export default function WorkHoursView({
         }
       });
       
+      console.log('PDF export completed successfully');
+      
     } catch (error) {
       console.error('Export failed with error:', error);
       
       let errorMessage = 'Failed to export PDF. Please try again.';
       
       if (error instanceof Error) {
+        console.error('Error details:', error.message);
         if (error.message.includes('No data')) {
           errorMessage = 'No data available to export.';
         } else if (error.message.includes('jsPDF')) {
@@ -243,7 +283,7 @@ export default function WorkHoursView({
       )
     },
     // Always show date column when we have date information
-    ...(dates.length > 0 ? [{
+    {
       key: 'date',
       label: 'Date',
       sortable: true,
@@ -253,7 +293,7 @@ export default function WorkHoursView({
           {formatDate(value)}
         </span>
       )
-    }] : []),
+    },
     {
       key: 'department',
       label: 'Department',
@@ -334,7 +374,7 @@ export default function WorkHoursView({
       label: 'Designation',
       options: designations
     },
-    // Include date filter when there are multiple dates
+    // Always include date filter when there are multiple dates
     ...(dates.length > 1 ? [{
       key: 'date',
       label: 'Date',
@@ -494,34 +534,11 @@ export default function WorkHoursView({
     </div>
   );
 
-  // Summary Stats Component - Updated for individual records
-  const SummaryStats = () => (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-primary)]">{summaryStats.totalEmployees}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Total Employees</div>
-      </div>
-      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-info)]">{summaryStats.totalRecords}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Daily Records</div>
-      </div>
-      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-success)]">{formatHours(summaryStats.totalHours)}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Total Hours</div>
-      </div>
-      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-warning)]">{summaryStats.currentlyClocked}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Currently Clocked In</div>
-      </div>
-      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-secondary)]">{formatHours(summaryStats.avgHoursPerRecord)}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Avg Hours/Record</div>
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 pb-6">
+
       {/* Header with Date Range Picker and View Toggle */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -539,8 +556,6 @@ export default function WorkHoursView({
         </div>
       </div>
 
-      {/* Summary Statistics */}
-      {processedData.length > 0 && !loading && <SummaryStats />}
 
       {/* Content */}
       {viewMode === 'table' ? (
@@ -552,8 +567,8 @@ export default function WorkHoursView({
             filters={filters}
             loading={loading}
             error={error}
-            defaultSortField="date"
-            defaultSortDirection="desc"
+            defaultSortField="name"
+            defaultSortDirection="asc"
             defaultItemsPerPage={25}
             emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
             className="min-w-[1200px]"

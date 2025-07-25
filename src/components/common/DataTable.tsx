@@ -33,7 +33,6 @@ interface DataTableProps<T = any> {
   additionalControls?: ReactNode | ((filteredData: T[]) => ReactNode);
   onRowClick?: (row: T, index: number) => void;
   onFiltersChange?: (filters: Record<string, string>) => void;
-  onFilteredDataChange?: (filteredData: T[]) => void; // NEW: Callback for filtered data
   className?: string;
   maxHeight?: string;
 }
@@ -52,7 +51,6 @@ export default function DataTable<T = any>({
   additionalControls,
   onRowClick,
   onFiltersChange,
-  onFilteredDataChange, // NEW
   className = '',
   maxHeight = 'max-h-[calc(100vh-24rem)]'
 }: DataTableProps<T>) {
@@ -65,39 +63,85 @@ export default function DataTable<T = any>({
     filters.reduce((acc, filter) => ({ ...acc, [filter.key]: filter.defaultValue || 'all' }), {})
   );
 
+  // Debug logging
+  useEffect(() => {
+    console.log('=== DataTable Debug ===');
+    console.log('Input data length:', data?.length || 0);
+    console.log('Input data sample:', data?.[0]);
+    console.log('Columns:', columns.map(c => c.key));
+    console.log('Filters:', filters);
+    console.log('Filter values:', filterValues);
+    console.log('Search term:', searchTerm);
+    console.log('Sort field:', sortField);
+    console.log('Sort direction:', sortDirection);
+    console.log('=====================');
+  }, [data, columns, filters, filterValues, searchTerm, sortField, sortDirection]);
+
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    let filtered = data.filter(item => {
+    console.log('=== Filtering Data ===');
+    console.log('Starting with data length:', data?.length || 0);
+    
+    if (!data || data.length === 0) {
+      console.log('No data to filter');
+      return [];
+    }
+
+    let filtered = data.filter((item, index) => {
       // Search filter
-      const matchesSearch = searchableFields.length === 0 || searchableFields.some(field => {
-        const value = item[field as keyof T];
-        return value?.toString().toLowerCase().includes(searchTerm.toLowerCase());
-      });
+      let matchesSearch = true;
+      if (searchableFields.length > 0 && searchTerm) {
+        matchesSearch = searchableFields.some(field => {
+          const value = item[field as keyof T];
+          const matches = value?.toString().toLowerCase().includes(searchTerm.toLowerCase());
+          if (index < 3) console.log(`Search check for item ${index}, field ${field}, value: "${value}", matches: ${matches}`);
+          return matches;
+        });
+      }
 
       // Custom filters
-      const matchesFilters = filters.every(filter => {
+      let matchesFilters = true;
+      for (const filter of filters) {
         const filterValue = filterValues[filter.key];
-        if (filterValue === 'all') return true;
-        return item[filter.key as keyof T] === filterValue;
-      });
+        if (filterValue && filterValue !== 'all') {
+          const itemValue = item[filter.key as keyof T];
+          matchesFilters = itemValue === filterValue;
+          if (index < 3) console.log(`Filter check for item ${index}, filter ${filter.key}, filterValue: "${filterValue}", itemValue: "${itemValue}", matches: ${matchesFilters}`);
+          if (!matchesFilters) break;
+        }
+      }
 
-      return matchesSearch && matchesFilters;
+      const finalMatch = matchesSearch && matchesFilters;
+      if (index < 3) console.log(`Item ${index} final match: ${finalMatch}`);
+      return finalMatch;
     });
+
+    console.log('After filtering:', filtered.length);
 
     // Sort
     if (sortField) {
+      console.log(`Sorting by field: ${sortField}, direction: ${sortDirection}`);
       filtered.sort((a, b) => {
-        const aVal = a[sortField as keyof T] || '';
-        const bVal = b[sortField as keyof T] || '';
+        const aVal = a[sortField as keyof T];
+        const bVal = b[sortField as keyof T];
+        
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        
+        const aStr = aVal.toString();
+        const bStr = bVal.toString();
         
         if (sortDirection === 'asc') {
-          return aVal.toString().localeCompare(bVal.toString());
+          return aStr.localeCompare(bStr);
         } else {
-          return bVal.toString().localeCompare(aVal.toString());
+          return bStr.localeCompare(aStr);
         }
       });
     }
 
+    console.log('Final filtered and sorted data length:', filtered.length);
     return filtered;
   }, [data, searchTerm, sortField, sortDirection, filterValues, searchableFields, filters]);
 
@@ -111,13 +155,6 @@ export default function DataTable<T = any>({
       onFiltersChange(activeFilters);
     }
   }, [filterValues, searchTerm, onFiltersChange]);
-
-  // NEW: Notify parent component of filtered data changes
-  useEffect(() => {
-    if (onFilteredDataChange) {
-      onFilteredDataChange(filteredAndSortedData);
-    }
-  }, [filteredAndSortedData, onFilteredDataChange]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
@@ -139,6 +176,7 @@ export default function DataTable<T = any>({
   };
 
   const handleFilterChange = (filterKey: string, value: string) => {
+    console.log(`Filter changed: ${filterKey} = ${value}`);
     setFilterValues(prev => ({ ...prev, [filterKey]: value }));
   };
 
@@ -170,6 +208,7 @@ export default function DataTable<T = any>({
 
   return (
     <div className={`w-full max-w-full overflow-hidden ${className}`}>
+
       {/* Header with search and controls */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 px-1">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-wrap">
