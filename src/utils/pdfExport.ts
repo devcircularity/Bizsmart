@@ -30,6 +30,23 @@ interface ExportConfig {
   };
 }
 
+// NEW INTERFACE FOR EMPLOYEE ATTENDANCE DETAIL
+interface EmployeeAttendanceExportData {
+  employeeInfo: any;
+  attendanceData: any[];
+  startDate: string;
+  endDate: string;
+  summaryStats: {
+    totalDays: number;
+    daysPresent: number;
+    totalHours: number;
+    averageHours: number;
+    attendanceRate: number;
+    currentStreak: number;
+  };
+}
+
+// EXISTING FUNCTION - Keep as is
 export const exportWorkHoursToPDF = async (config: ExportConfig) => {
   try {
     console.log('Starting PDF export with config:', config);
@@ -270,6 +287,229 @@ export const exportWorkHoursToPDF = async (config: ExportConfig) => {
   }
 };
 
+// NEW FUNCTION FOR EMPLOYEE ATTENDANCE DETAIL
+export const exportEmployeeAttendanceToPDF = async (data: EmployeeAttendanceExportData) => {
+  try {
+    console.log('Starting Employee Attendance PDF export with data:', data);
+    
+    const { employeeInfo, attendanceData, startDate, endDate, summaryStats } = data;
+    
+    if (!attendanceData || attendanceData.length === 0) {
+      throw new Error('No attendance data to export');
+    }
+
+    // Create new PDF document in PORTRAIT orientation for individual employee
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    console.log('PDF created in portrait mode. Page size:', pageWidth, 'x', pageHeight);
+    
+    let yPosition = 20;
+
+    // Add company header
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BizSmart Enterprises Ltd', pageWidth - 15, 20, { align: 'right' });
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Employee Attendance Report', pageWidth - 15, 30, { align: 'right' });
+
+    // Add report title
+    yPosition += 15;
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Employee Attendance Detail', 15, yPosition);
+
+    // Add employee information
+    if (employeeInfo) {
+      yPosition += 15;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Employee Information', 15, yPosition);
+      
+      yPosition += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Name: ${employeeInfo.name} (${employeeInfo.employee})`, 15, yPosition);
+      
+      yPosition += 6;
+      doc.text(`Department: ${employeeInfo.department || 'N/A'}`, 15, yPosition);
+      
+      yPosition += 6;
+      doc.text(`Designation: ${employeeInfo.designation || 'N/A'}`, 15, yPosition);
+    }
+
+    // Add period information
+    yPosition += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Period: ${formatDate(startDate)} to ${formatDate(endDate)}`, 15, yPosition);
+
+    // Add generation timestamp
+    yPosition += 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 15, yPosition);
+
+    // Add summary statistics
+    yPosition += 20;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary Statistics', 15, yPosition);
+    
+    yPosition += 10;
+    
+    const summaryData = [
+      ['Total Days', summaryStats.totalDays.toString()],
+      ['Days Present', summaryStats.daysPresent.toString()],
+      ['Days Absent', (summaryStats.totalDays - summaryStats.daysPresent).toString()],
+      ['Total Hours', summaryStats.totalHours.toFixed(2) + 'h'],
+      ['Average Hours/Day', summaryStats.averageHours.toFixed(2) + 'h'],
+      ['Attendance Rate', summaryStats.attendanceRate.toFixed(1) + '%'],
+      ['Current Streak', summaryStats.currentStreak.toString() + ' days']
+    ];
+
+    try {
+      console.log('Creating summary table for employee attendance...');
+      
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        theme: 'grid',
+        headStyles: { fillColor: [23, 80, 59], textColor: 255, fontSize: 11 },
+        bodyStyles: { fontSize: 10 },
+        margin: { left: 15, right: 15 },
+        tableWidth: 'wrap',
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 40, halign: 'right' }
+        }
+      });
+
+      yPosition = (doc as any).lastAutoTable.finalY + 20;
+      console.log('Summary table created successfully');
+    } catch (tableError) {
+      console.warn('Error creating summary table:', tableError);
+      yPosition += 50; // Skip summary table
+    }
+
+    // Check if we need a new page
+    if (yPosition > pageHeight - 100) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    // Add attendance details table
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Attendance Details', 15, yPosition);
+    yPosition += 10;
+
+    // Prepare attendance table data
+    const attendanceTableData = attendanceData.map(record => [
+      formatDate(record.date),
+      getAttendanceStatus(record),
+      record.time_in || '-',
+      record.time_out || '-',
+      record.total_hours ? record.total_hours.toFixed(2) + 'h' : '0.00h'
+    ]);
+
+    try {
+      console.log('Creating attendance details table...');
+      
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Date', 'Status', 'Time In', 'Time Out', 'Hours']],
+        body: attendanceTableData,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [23, 80, 59],
+          textColor: 255,
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: { 
+          fontSize: 9,
+          cellPadding: 3
+        },
+        alternateRowStyles: { 
+          fillColor: [248, 253, 249]
+        },
+        margin: { left: 15, right: 15 },
+        tableWidth: 'auto',
+        columnStyles: {
+          0: { cellWidth: 35 }, // Date
+          1: { cellWidth: 30 }, // Status
+          2: { cellWidth: 25, halign: 'center' }, // Time In
+          3: { cellWidth: 25, halign: 'center' }, // Time Out
+          4: { cellWidth: 25, halign: 'right' } // Hours
+        }
+      });
+
+      console.log('Attendance details table created successfully');
+    } catch (attendanceTableError) {
+      console.error('Error creating attendance table:', attendanceTableError);
+      throw new Error('Failed to create attendance details table: ' + attendanceTableError);
+    }
+
+    // Add footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Page ${i} of ${totalPages}`,
+        pageWidth - 15,
+        pageHeight - 10,
+        { align: 'right' }
+      );
+      doc.text(
+        '© 2025 BizSmart Enterprises Ltd',
+        15,
+        pageHeight - 10
+      );
+    }
+
+    // Generate filename
+    const employeeName = employeeInfo?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Employee';
+    const filename = `${employeeName}_attendance_${startDate}_to_${endDate}.pdf`;
+
+    console.log('Saving Employee Attendance PDF with filename:', filename);
+
+    // Save the PDF
+    doc.save(filename);
+    
+    console.log('Employee Attendance PDF export completed successfully');
+
+  } catch (error) {
+    console.error('Employee Attendance PDF Export Error:', error);
+    throw error;
+  }
+};
+
+// Helper function to get attendance status label
+const getAttendanceStatus = (record: any): string => {
+  if (record.is_currently_clocked_in) {
+    return 'Clocked In';
+  } else if (record.time_out) {
+    return 'Completed';
+  } else if (record.time_in) {
+    return 'No Check-out';
+  } else if (record.total_hours > 0) {
+    return 'Present';
+  } else {
+    return 'Absent';
+  }
+};
+
+// Helper function to format dates
 const formatDate = (dateStr: string): string => {
   try {
     return new Date(dateStr).toLocaleDateString('en-US', {

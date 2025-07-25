@@ -44,86 +44,56 @@ export default function WorkHoursView({
   // Check if we're showing a date range
   const isDateRange = startDate !== endDate;
 
-  // Aggregate data by employee when showing date range
+  // NO AGGREGATION - Just show individual records with date information
   const processedData = useMemo(() => {
-    if (!isDateRange) {
-      return workHours; // Return as-is for single date
+    if (!workHours || workHours.length === 0) {
+      return [];
     }
 
-    // Group by employee and aggregate totals for date range
-    const employeeMap = new Map();
-    
-    workHours.forEach(record => {
-      const key = record.employee;
-      
-      if (employeeMap.has(key)) {
-        const existing = employeeMap.get(key);
-        existing.total_hours += record.total_hours;
-        existing.days_worked += 1;
-        
-        // Track earliest time_in and latest time_out across all days
-        if (record.time_in && (!existing.earliest_time_in || record.time_in < existing.earliest_time_in)) {
-          existing.earliest_time_in = record.time_in;
-        }
-        if (record.time_out && (!existing.latest_time_out || record.time_out > existing.latest_time_out)) {
-          existing.latest_time_out = record.time_out;
-        }
-        
-        // Update clocked in status (if clocked in on any day)
-        if (record.is_currently_clocked_in) {
-          existing.is_currently_clocked_in = true;
-        }
-      } else {
-        employeeMap.set(key, {
-          ...record,
-          days_worked: 1,
-          earliest_time_in: record.time_in,
-          latest_time_out: record.time_out,
-          average_hours_per_day: record.total_hours
-        });
-      }
-    });
-
-    // Convert back to array and calculate averages
-    return Array.from(employeeMap.values()).map(record => ({
+    // For both single date and date range, show individual daily records
+    const processed = workHours.map(record => ({
       ...record,
-      average_hours_per_day: record.total_hours / record.days_worked,
-      time_in: record.earliest_time_in,
-      time_out: record.latest_time_out
+      // Ensure date is always available for display
+      date: record.date || startDate
     }));
-  }, [workHours, isDateRange]);
+    
+    return processed;
+  }, [workHours, startDate]);
 
   // Get unique departments for filter
   const departments = useMemo(() => {
-    const depts = [...new Set(processedData.map(wh => wh.department))].sort();
+    const depts = [...new Set(processedData.map(wh => wh.department))].filter(Boolean).sort();
     return depts.map(dept => ({ value: dept, label: dept }));
   }, [processedData]);
 
   // Get unique designations for filter
   const designations = useMemo(() => {
-    const desigs = [...new Set(processedData.map(wh => wh.designation))].sort();
+    const desigs = [...new Set(processedData.map(wh => wh.designation))].filter(Boolean).sort();
     return desigs.map(desig => ({ value: desig, label: desig }));
   }, [processedData]);
 
-  // Get unique dates for filter (when showing date range)
+  // Get unique dates for filter (available for both single date and date range)
   const dates = useMemo(() => {
-    if (!isDateRange) return [];
     const dateList = [...new Set(workHours.map(wh => wh.date).filter(Boolean))].sort();
     return dateList.map(date => ({ value: date!, label: new Date(date!).toLocaleDateString() }));
-  }, [workHours, isDateRange]);
+  }, [workHours]);
 
-  // Calculate summary statistics based on processed data
+  // Calculate summary statistics based on individual records (not aggregated)
   const summaryStats = useMemo(() => {
     const totalEmployees = new Set(processedData.map(wh => wh.employee)).size;
     const totalHours = processedData.reduce((sum, wh) => sum + wh.total_hours, 0);
     const currentlyClocked = processedData.filter(wh => wh.is_currently_clocked_in).length;
     const avgHoursPerEmployee = totalEmployees > 0 ? totalHours / totalEmployees : 0;
+    const totalRecords = processedData.length;
+    const avgHoursPerRecord = totalRecords > 0 ? totalHours / totalRecords : 0;
 
     return {
       totalEmployees,
       totalHours,
       currentlyClocked,
-      avgHoursPerEmployee
+      avgHoursPerEmployee,
+      totalRecords,
+      avgHoursPerRecord
     };
   }, [processedData]);
 
@@ -169,7 +139,7 @@ export default function WorkHoursView({
       return (
         <div className="flex items-center space-x-1">
           <div className="h-2 w-2 bg-[color:var(--color-error)] rounded-full"></div>
-          <span className="text-xs text-[color:var(--color-error)]">No Check-in</span>
+          <span className="text-xs text-[color:var(--color-error)]">No Check-out</span>
         </div>
       );
     }
@@ -184,16 +154,12 @@ export default function WorkHoursView({
 
   // Handle PDF export
   const handleExportPDF = async (dataToExport: WorkHour[]) => {
-    console.log('Export button clicked, data to export:', dataToExport);
-    
     setIsExporting(true);
     try {
       if (!dataToExport || dataToExport.length === 0) {
         throw new Error('No data available to export');
       }
 
-      console.log('Calling exportWorkHoursToPDF...');
-      
       await exportWorkHoursToPDF({
         data: dataToExport,
         startDate,
@@ -210,15 +176,12 @@ export default function WorkHoursView({
         }
       });
       
-      console.log('PDF export completed successfully');
-      
     } catch (error) {
       console.error('Export failed with error:', error);
       
       let errorMessage = 'Failed to export PDF. Please try again.';
       
       if (error instanceof Error) {
-        console.error('Error details:', error.message);
         if (error.message.includes('No data')) {
           errorMessage = 'No data available to export.';
         } else if (error.message.includes('jsPDF')) {
@@ -279,15 +242,15 @@ export default function WorkHoursView({
         </div>
       )
     },
-    // Add days worked column when showing date range
-    ...(isDateRange ? [{
-      key: 'days_worked',
-      label: 'Days Worked',
+    // Always show date column when we have date information
+    ...(dates.length > 0 ? [{
+      key: 'date',
+      label: 'Date',
       sortable: true,
-      width: 'w-28',
-      render: (value: number) => (
+      width: 'w-32',
+      render: (value: string) => (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-[color:var(--color-info)] text-[color:var(--color-info-foreground)]">
-          {value} days
+          {formatDate(value)}
         </span>
       )
     }] : []),
@@ -322,7 +285,7 @@ export default function WorkHoursView({
     },
     {
       key: 'time_in',
-      label: isDateRange ? 'First In' : 'Time In',
+      label: 'Time In',
       sortable: true,
       width: 'w-28',
       render: (value: string) => (
@@ -335,7 +298,7 @@ export default function WorkHoursView({
     },
     {
       key: 'time_out',
-      label: isDateRange ? 'Last Out' : 'Time Out',
+      label: 'Time Out',
       sortable: true,
       width: 'w-28',
       render: (value: string) => (
@@ -348,25 +311,18 @@ export default function WorkHoursView({
     },
     {
       key: 'total_hours',
-      label: isDateRange ? 'Total Hours' : 'Total Hours',
+      label: 'Hours Worked',
       sortable: true,
       width: 'w-32',
-      render: (value: number, row: any) => (
-        <div className="flex flex-col">
-          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getHoursStatusColor(value)}`}>
-            {formatHours(value)}h
-          </span>
-          {isDateRange && row.average_hours_per_day && (
-            <span className="text-xs text-[color:var(--color-muted-foreground)] mt-1">
-              Avg: {formatHours(row.average_hours_per_day)}h/day
-            </span>
-          )}
-        </div>
+      render: (value: number) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getHoursStatusColor(value)}`}>
+          {formatHours(value)}h
+        </span>
       )
     }
   ];
 
-  // Define filters
+  // Define filters - Always include date filter when we have multiple dates
   const filters = [
     {
       key: 'department',
@@ -378,8 +334,8 @@ export default function WorkHoursView({
       label: 'Designation',
       options: designations
     },
-    // Add date filter only when showing raw data (single date)
-    ...(!isDateRange && dates.length > 1 ? [{
+    // Include date filter when there are multiple dates
+    ...(dates.length > 1 ? [{
       key: 'date',
       label: 'Date',
       options: dates
@@ -408,9 +364,9 @@ export default function WorkHoursView({
               <p className="text-sm text-[color:var(--color-muted-foreground)] truncate">
                 {item.employee} • {item.department}
               </p>
-              {isDateRange && (item as any).days_worked && (
+              {item.date && (
                 <p className="text-xs text-[color:var(--color-muted-foreground)] truncate">
-                  {(item as any).days_worked} days worked
+                  {formatDate(item.date)}
                 </p>
               )}
             </div>
@@ -428,13 +384,13 @@ export default function WorkHoursView({
         </div>
 
         {/* Time Stats Grid */}
-        <div className={`grid gap-4 mb-4 ${isDateRange ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <div className={`text-lg font-bold ${item.time_in ? 'text-[color:var(--color-success)]' : 'text-[color:var(--color-muted-foreground)]'}`}>
               {formatTime(item.time_in)}
             </div>
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
-              {isDateRange ? 'First In' : 'Time In'}
+              Time In
             </div>
           </div>
           <div className="text-center">
@@ -442,17 +398,9 @@ export default function WorkHoursView({
               {formatTime(item.time_out)}
             </div>
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
-              {isDateRange ? 'Last Out' : 'Time Out'}
+              Time Out
             </div>
           </div>
-          {isDateRange && (
-            <div className="text-center">
-              <div className="text-lg font-bold text-[color:var(--color-info)]">
-                {(item as any).days_worked || 0}
-              </div>
-              <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Days Worked</div>
-            </div>
-          )}
           <div className="text-center">
             <div className={`text-lg font-bold ${
               item.total_hours >= 8 ? 'text-[color:var(--color-success)]' : 
@@ -462,7 +410,7 @@ export default function WorkHoursView({
               {formatHours(item.total_hours)}h
             </div>
             <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
-              {isDateRange ? 'Total Hours' : 'Total Hours'}
+              Hours Worked
             </div>
           </div>
         </div>
@@ -472,24 +420,18 @@ export default function WorkHoursView({
           <div className="flex justify-between text-sm">
             <span className="text-[color:var(--color-muted-foreground)]">Work Progress</span>
             <span className="font-medium text-[color:var(--color-card-foreground)]">
-              {isDateRange 
-                ? `${formatHours(item.total_hours)}h total (${formatHours((item as any).average_hours_per_day || 0)}h/day avg)`
-                : `${Math.round((item.total_hours / 8) * 100)}% of 8h`
-              }
+              {Math.round((item.total_hours / 8) * 100)}% of 8h
             </span>
           </div>
           <div className="w-full bg-[color:var(--color-muted)] rounded-full h-3">
             <div 
               className={`h-3 rounded-full transition-all duration-300 ${
-                item.total_hours >= (isDateRange ? (item as any).days_worked * 8 : 8) ? 'bg-[color:var(--color-success)]' : 
-                item.total_hours >= (isDateRange ? (item as any).days_worked * 6 : 6) ? 'bg-[color:var(--color-warning)]' : 
+                item.total_hours >= 8 ? 'bg-[color:var(--color-success)]' : 
+                item.total_hours >= 6 ? 'bg-[color:var(--color-warning)]' : 
                 'bg-[color:var(--color-error)]'
               }`}
               style={{ 
-                width: `${Math.min(100, Math.max(5, isDateRange 
-                  ? (item.total_hours / ((item as any).days_worked * 8)) * 100
-                  : (item.total_hours / 8) * 100
-                ))}%` 
+                width: `${Math.min(100, Math.max(5, (item.total_hours / 8) * 100))}%` 
               }}
             ></div>
           </div>
@@ -552,12 +494,16 @@ export default function WorkHoursView({
     </div>
   );
 
-  // Summary Stats Component
+  // Summary Stats Component - Updated for individual records
   const SummaryStats = () => (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
       <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
         <div className="text-2xl font-bold text-[color:var(--color-primary)]">{summaryStats.totalEmployees}</div>
         <div className="text-sm text-[color:var(--color-muted-foreground)]">Total Employees</div>
+      </div>
+      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
+        <div className="text-2xl font-bold text-[color:var(--color-info)]">{summaryStats.totalRecords}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Daily Records</div>
       </div>
       <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
         <div className="text-2xl font-bold text-[color:var(--color-success)]">{formatHours(summaryStats.totalHours)}</div>
@@ -568,8 +514,8 @@ export default function WorkHoursView({
         <div className="text-sm text-[color:var(--color-muted-foreground)]">Currently Clocked In</div>
       </div>
       <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
-        <div className="text-2xl font-bold text-[color:var(--color-info)]">{formatHours(summaryStats.avgHoursPerEmployee)}</div>
-        <div className="text-sm text-[color:var(--color-muted-foreground)]">Avg Hours/Employee</div>
+        <div className="text-2xl font-bold text-[color:var(--color-secondary)]">{formatHours(summaryStats.avgHoursPerRecord)}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Avg Hours/Record</div>
       </div>
     </div>
   );
@@ -582,7 +528,7 @@ export default function WorkHoursView({
           <div>
             <h1 className="text-3xl font-semibold text-[color:var(--color-foreground)]">Work Hours Report</h1>
             <p className="text-[color:var(--color-muted-foreground)] mt-1">
-              {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} employee work hours 
+              {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} individual daily work records
               {isDateRange ? ` from ${startDate} to ${endDate}` : ` for ${startDate}`}
             </p>
           </div>
@@ -606,8 +552,8 @@ export default function WorkHoursView({
             filters={filters}
             loading={loading}
             error={error}
-            defaultSortField="name"
-            defaultSortDirection="asc"
+            defaultSortField="date"
+            defaultSortDirection="desc"
             defaultItemsPerPage={25}
             emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
             className="min-w-[1200px]"

@@ -33,7 +33,9 @@ interface DataTableProps<T = any> {
   additionalControls?: ReactNode | ((filteredData: T[]) => ReactNode);
   onRowClick?: (row: T, index: number) => void;
   onFiltersChange?: (filters: Record<string, string>) => void;
+  onFilteredDataChange?: (filteredData: T[]) => void; // NEW: Callback for filtered data
   className?: string;
+  maxHeight?: string;
 }
 
 export default function DataTable<T = any>({
@@ -50,7 +52,9 @@ export default function DataTable<T = any>({
   additionalControls,
   onRowClick,
   onFiltersChange,
-  className = ''
+  onFilteredDataChange, // NEW
+  className = '',
+  maxHeight = 'max-h-[calc(100vh-24rem)]'
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -107,6 +111,13 @@ export default function DataTable<T = any>({
       onFiltersChange(activeFilters);
     }
   }, [filterValues, searchTerm, onFiltersChange]);
+
+  // NEW: Notify parent component of filtered data changes
+  useEffect(() => {
+    if (onFilteredDataChange) {
+      onFilteredDataChange(filteredAndSortedData);
+    }
+  }, [filteredAndSortedData, onFilteredDataChange]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
@@ -171,7 +182,7 @@ export default function DataTable<T = any>({
               <select
                 value={filterValues[filter.key]}
                 onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                className="border border-[color:var(--color-foreground)] rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent min-w-0"
+                className="border border-[color:var(--color-border)] bg-[color:var(--color-input)] text-[color:var(--color-foreground)] rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent min-w-0"
               >
                 <option value="all">All {filter.label}</option>
                 {filter.options.map(option => (
@@ -192,7 +203,7 @@ export default function DataTable<T = any>({
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-[color:var(--color-foreground)] rounded-lg focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent w-64 max-w-full"
+                className="px-4 py-2 border border-[color:var(--color-border)] bg-[color:var(--color-input)] text-[color:var(--color-foreground)] placeholder-[color:var(--color-muted-foreground)] rounded-lg focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent w-64 max-w-full"
               />
             </div>
           )}
@@ -203,7 +214,7 @@ export default function DataTable<T = any>({
             <select
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="border border-[color:var(--color-foreground)] rounded px-2 py-1 text-sm min-w-0"
+              className="border border-[color:var(--color-border)] bg-[color:var(--color-input)] text-[color:var(--color-foreground)] rounded px-2 py-1 text-sm min-w-0"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -224,18 +235,18 @@ export default function DataTable<T = any>({
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Table Container - Fixed height handling */}
       <div className="bg-[color:var(--color-background)] rounded-lg shadow overflow-hidden w-full">
         <div className="overflow-x-auto">
-          <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full min-w-fit divide-y divide-[color:var(--color-foreground)]">
-              <thead className="bg-[color:var(--color-background)] sticky top-0 z-10">
+          <div className={`${maxHeight} overflow-y-auto`}>
+            <table className="w-full min-w-fit divide-y divide-[color:var(--color-border)]">
+              <thead className="bg-[color:var(--color-muted)] sticky top-0 z-10">
                 <tr>
                   {columns.map(column => (
                     <th
                       key={column.key}
                       className={`${column.width || 'w-auto'} px-4 py-3 text-left text-xs font-medium text-[color:var(--color-foreground)] uppercase tracking-wider ${
-                        column.sortable ? 'cursor-pointer hover:bg-[color:var(--color-background)]' : ''
+                        column.sortable ? 'cursor-pointer hover:bg-[color:var(--color-muted)]/80' : ''
                       }`}
                       onClick={column.sortable ? () => handleSort(column.key) : undefined}
                     >
@@ -251,12 +262,12 @@ export default function DataTable<T = any>({
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-[color:var(--color-background)] divide-y divide-[color:var(--color-foreground)]">
+              <tbody className="bg-[color:var(--color-background)] divide-y divide-[color:var(--color-border)]">
                 {currentData.length > 0 ? (
                   currentData.map((row, index) => (
                     <tr 
                       key={index} 
-                      className={`hover:bg-[color:var(--color-background)] ${onRowClick ? 'cursor-pointer' : ''}`}
+                      className={`hover:bg-[color:var(--color-muted)]/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                       onClick={onRowClick ? () => onRowClick(row, index) : undefined}
                     >
                       {columns.map(column => (
@@ -274,7 +285,7 @@ export default function DataTable<T = any>({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={columns.length} className="px-6 py-8 text-center text-sm text-[color:var(--color-foreground)]">
+                    <td colSpan={columns.length} className="px-6 py-8 text-center text-sm text-[color:var(--color-muted-foreground)]">
                       {emptyMessage}
                     </td>
                   </tr>
@@ -292,7 +303,7 @@ export default function DataTable<T = any>({
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="flex items-center px-3 py-2 text-sm font-medium text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-foreground)] rounded-md hover:bg-[color:var(--color-background)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 py-2 text-sm font-medium text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-border)] rounded-md hover:bg-[color:var(--color-muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Previous</span>
@@ -316,10 +327,10 @@ export default function DataTable<T = any>({
                   <button
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md min-w-0 ${
+                    className={`px-3 py-2 text-sm font-medium rounded-md min-w-0 transition-colors ${
                       currentPage === pageNum
-                        ? 'bg-[color:var(--color-primary)] text-white'
-                        : 'text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-foreground)] hover:bg-[color:var(--color-background)]'
+                        ? 'bg-[color:var(--color-primary)] text-[color:var(--color-primary-foreground)]'
+                        : 'text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-border)] hover:bg-[color:var(--color-muted)]'
                     }`}
                   >
                     {pageNum}
@@ -331,7 +342,7 @@ export default function DataTable<T = any>({
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="flex items-center px-3 py-2 text-sm font-medium text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-foreground)] rounded-md hover:bg-[color:var(--color-background)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 py-2 text-sm font-medium text-[color:var(--color-foreground)] bg-[color:var(--color-background)] border border-[color:var(--color-border)] rounded-md hover:bg-[color:var(--color-muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <span className="hidden sm:inline">Next</span>
               <span className="sm:hidden">Next</span>
