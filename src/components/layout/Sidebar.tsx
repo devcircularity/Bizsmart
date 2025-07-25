@@ -47,9 +47,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           h-[calc(100vh-4rem)] flex flex-col
         `}
         style={{
-          backgroundColor: 'var(--background)',
+          backgroundColor: 'color-mix(in srgb, var(--primary) 8%, var(--background))',
           borderRight: '1px solid',
-          borderColor: 'color-mix(in srgb, var(--foreground) 15%, transparent)'
+          borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)'
         }}
       >
         {/* Header - Only on mobile */}
@@ -57,7 +57,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           className="flex items-center justify-between h-16 px-4 lg:hidden flex-shrink-0"
           style={{
             borderBottom: '1px solid',
-            borderColor: 'color-mix(in srgb, var(--foreground) 10%, transparent)'
+            borderColor: 'color-mix(in srgb, var(--primary) 15%, transparent)',
+            backgroundColor: 'color-mix(in srgb, var(--primary) 12%, var(--background))'
           }}
         >
           <div className="flex items-center space-x-3">
@@ -82,7 +83,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--foreground)';
-              e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--foreground) 8%, transparent)';
+              e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--primary) 15%, transparent)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = 'color-mix(in srgb, var(--foreground) 70%, transparent)';
@@ -108,22 +109,23 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   className="flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 group"
                   style={{
                     ...(isActive ? {
-                      backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)',
+                      backgroundColor: 'color-mix(in srgb, var(--primary) 20%, var(--background))',
                       color: 'var(--primary)',
-                      borderRight: '3px solid var(--primary)'
+                      borderLeft: '3px solid var(--primary)',
+                      fontWeight: '600'
                     } : {
-                      color: 'color-mix(in srgb, var(--foreground) 70%, transparent)'
+                      color: 'color-mix(in srgb, var(--foreground) 80%, transparent)'
                     })
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.color = 'var(--foreground)';
-                      e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--foreground) 5%, transparent)';
+                      e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--primary) 12%, var(--background))';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.color = 'color-mix(in srgb, var(--foreground) 70%, transparent)';
+                      e.currentTarget.style.color = 'color-mix(in srgb, var(--foreground) 80%, transparent)';
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }
                   }}
@@ -133,13 +135,44 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     style={{
                       color: isActive 
                         ? 'var(--primary)' 
-                        : 'color-mix(in srgb, var(--foreground) 50%, transparent)'
+                        : 'color-mix(in srgb, var(--foreground) 60%, transparent)'
                     }}
                   />
                   <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
+          </div>
+
+          {/* Optional: Add some branding/logo space */}
+          <div className="mt-auto pt-6">
+            <div 
+              className="text-center p-4 rounded-lg"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--primary) 12%, var(--background))',
+                border: '1px solid',
+                borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)'
+              }}
+            >
+              <div 
+                className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-2"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                <span className="text-white font-bold text-lg">BS</span>
+              </div>
+              <div 
+                className="text-xs font-medium"
+                style={{ color: 'var(--primary)' }}
+              >
+                BizSmart HR
+              </div>
+              <div 
+                className="text-xs"
+                style={{ color: 'color-mix(in srgb, var(--foreground) 60%, transparent)' }}
+              >
+                Enterprise Edition
+              </div>
+            </div>
           </div>
         </nav>
 
@@ -148,14 +181,15 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           className="px-4 py-4 flex-shrink-0"
           style={{
             borderTop: '1px solid',
-            borderColor: 'color-mix(in srgb, var(--foreground) 8%, transparent)'
+            borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)',
+            backgroundColor: 'color-mix(in srgb, var(--primary) 5%, var(--background))'
           }}
         >
           <div 
             className="text-xs text-center"
-            style={{ color: 'color-mix(in srgb, var(--foreground) 50%, transparent)' }}
+            style={{ color: 'color-mix(in srgb, var(--foreground) 60%, transparent)' }}
           >
-            © 2025 BizSmart HR
+            © 2025 BizSmart Enterprises
           </div>
         </div>
       </aside>

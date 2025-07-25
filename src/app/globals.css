@@ -2,9 +2,9 @@
 
 :root {
   /* Light mode brand palette */
-  --background: #ffffff;
+  --background: #f8fdf9; /* Very light green tint */
   --foreground: #1f1f1f;
-  --muted: #f8f9fa;
+  --muted: #f1f8f3; /* Slightly more green tint for muted areas */
   --muted-foreground: #6b7280;
   --border: #e5e7eb;
   --input: #ffffff;
@@ -49,9 +49,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #0a0f0b; /* Very dark green tint */
     --foreground: #ededed;
-    --muted: #1a1a1a;
+    --muted: #1a1f1b; /* Dark green tint for muted areas */
     --muted-foreground: #a1a1aa;
     --border: #27272a;
     --input: #1a1a1a;
@@ -97,9 +97,9 @@
 
 /* Manual dark mode toggle support */
 [data-theme="dark"] {
-  --background: #0a0a0a;
+  --background: #0a0f0b;
   --foreground: #ededed;
-  --muted: #1a1a1a;
+  --muted: #1a1f1b;
   --muted-foreground: #a1a1aa;
   --border: #27272a;
   --input: #1a1a1a;

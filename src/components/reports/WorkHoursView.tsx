@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Grid, List, Calendar, Clock } from 'lucide-react';
+import { Grid, List, Calendar, Clock, CalendarDays } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import CardGrid from '../common/CardGrid';
 
@@ -13,37 +13,116 @@ export interface WorkHour {
   time_in: string;
   time_out: string;
   total_hours: number;
+  date?: string; // Date field for range filtering
   is_currently_clocked_in?: boolean;
 }
 
 interface WorkHoursViewProps {
   data: WorkHour[];
-  date: string;
-  onDateChange: (date: string) => void;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (date: string) => void;
+  onEndDateChange: (date: string) => void;
   loading: boolean;
   error: string;
 }
 
 export default function WorkHoursView({ 
   data: workHours, 
-  date, 
-  onDateChange, 
+  startDate, 
+  endDate,
+  onStartDateChange, 
+  onEndDateChange,
   loading, 
   error 
 }: WorkHoursViewProps) {
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
 
+  // Check if we're showing a date range
+  const isDateRange = startDate !== endDate;
+
+  // Aggregate data by employee when showing date range
+  const processedData = useMemo(() => {
+    if (!isDateRange) {
+      return workHours; // Return as-is for single date
+    }
+
+    // Group by employee and aggregate totals for date range
+    const employeeMap = new Map();
+    
+    workHours.forEach(record => {
+      const key = record.employee;
+      
+      if (employeeMap.has(key)) {
+        const existing = employeeMap.get(key);
+        existing.total_hours += record.total_hours;
+        existing.days_worked += 1;
+        
+        // Track earliest time_in and latest time_out across all days
+        if (record.time_in && (!existing.earliest_time_in || record.time_in < existing.earliest_time_in)) {
+          existing.earliest_time_in = record.time_in;
+        }
+        if (record.time_out && (!existing.latest_time_out || record.time_out > existing.latest_time_out)) {
+          existing.latest_time_out = record.time_out;
+        }
+        
+        // Update clocked in status (if clocked in on any day)
+        if (record.is_currently_clocked_in) {
+          existing.is_currently_clocked_in = true;
+        }
+      } else {
+        employeeMap.set(key, {
+          ...record,
+          days_worked: 1,
+          earliest_time_in: record.time_in,
+          latest_time_out: record.time_out,
+          average_hours_per_day: record.total_hours
+        });
+      }
+    });
+
+    // Convert back to array and calculate averages
+    return Array.from(employeeMap.values()).map(record => ({
+      ...record,
+      average_hours_per_day: record.total_hours / record.days_worked,
+      time_in: record.earliest_time_in,
+      time_out: record.latest_time_out
+    }));
+  }, [workHours, isDateRange]);
+
   // Get unique departments for filter
   const departments = useMemo(() => {
-    const depts = [...new Set(workHours.map(wh => wh.department))].sort();
+    const depts = [...new Set(processedData.map(wh => wh.department))].sort();
     return depts.map(dept => ({ value: dept, label: dept }));
-  }, [workHours]);
+  }, [processedData]);
 
   // Get unique designations for filter
   const designations = useMemo(() => {
-    const desigs = [...new Set(workHours.map(wh => wh.designation))].sort();
+    const desigs = [...new Set(processedData.map(wh => wh.designation))].sort();
     return desigs.map(desig => ({ value: desig, label: desig }));
-  }, [workHours]);
+  }, [processedData]);
+
+  // Get unique dates for filter (when showing date range)
+  const dates = useMemo(() => {
+    if (!isDateRange) return [];
+    const dateList = [...new Set(workHours.map(wh => wh.date).filter(Boolean))].sort();
+    return dateList.map(date => ({ value: date!, label: new Date(date!).toLocaleDateString() }));
+  }, [workHours, isDateRange]);
+
+  // Calculate summary statistics
+  const summaryStats = useMemo(() => {
+    const totalEmployees = new Set(processedData.map(wh => wh.employee)).size;
+    const totalHours = processedData.reduce((sum, wh) => sum + wh.total_hours, 0);
+    const currentlyClocked = processedData.filter(wh => wh.is_currently_clocked_in).length;
+    const avgHoursPerEmployee = totalEmployees > 0 ? totalHours / totalEmployees : 0;
+
+    return {
+      totalEmployees,
+      totalHours,
+      currentlyClocked,
+      avgHoursPerEmployee
+    };
+  }, [processedData]);
 
   // Fixed time formatting - expects HH:MM format from backend
   const formatTime = (timeStr: string) => {
@@ -55,6 +134,16 @@ export default function WorkHoursView({
   const formatHours = (hours: number) => {
     if (!hours) return '0.00';
     return hours.toFixed(2);
+  };
+
+  // Format date display
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    try {
+      return new Date(dateStr).toLocaleDateString();
+    } catch {
+      return dateStr;
+    }
   };
 
   // Get status indicator
@@ -117,6 +206,18 @@ export default function WorkHoursView({
         </div>
       )
     },
+    // Add days worked column when showing date range
+    ...(isDateRange ? [{
+      key: 'days_worked',
+      label: 'Days Worked',
+      sortable: true,
+      width: 'w-28',
+      render: (value: number) => (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-[color:var(--color-info)] text-[color:var(--color-info-foreground)]">
+          {value} days
+        </span>
+      )
+    }] : []),
     {
       key: 'department',
       label: 'Department',
@@ -148,7 +249,7 @@ export default function WorkHoursView({
     },
     {
       key: 'time_in',
-      label: 'Time In',
+      label: isDateRange ? 'First In' : 'Time In',
       sortable: true,
       width: 'w-28',
       render: (value: string) => (
@@ -161,7 +262,7 @@ export default function WorkHoursView({
     },
     {
       key: 'time_out',
-      label: 'Time Out',
+      label: isDateRange ? 'Last Out' : 'Time Out',
       sortable: true,
       width: 'w-28',
       render: (value: string) => (
@@ -174,13 +275,20 @@ export default function WorkHoursView({
     },
     {
       key: 'total_hours',
-      label: 'Total Hours',
+      label: isDateRange ? 'Total Hours' : 'Total Hours',
       sortable: true,
       width: 'w-32',
-      render: (value: number) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getHoursStatusColor(value)}`}>
-          {formatHours(value)}h
-        </span>
+      render: (value: number, row: any) => (
+        <div className="flex flex-col">
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getHoursStatusColor(value)}`}>
+            {formatHours(value)}h
+          </span>
+          {isDateRange && row.average_hours_per_day && (
+            <span className="text-xs text-[color:var(--color-muted-foreground)] mt-1">
+              Avg: {formatHours(row.average_hours_per_day)}h/day
+            </span>
+          )}
+        </div>
       )
     }
   ];
@@ -196,7 +304,13 @@ export default function WorkHoursView({
       key: 'designation',
       label: 'Designation',
       options: designations
-    }
+    },
+    // Add date filter only when showing raw data (single date)
+    ...(!isDateRange && dates.length > 1 ? [{
+      key: 'date',
+      label: 'Date',
+      options: dates
+    }] : [])
   ];
 
   // Define searchable fields
@@ -221,6 +335,11 @@ export default function WorkHoursView({
               <p className="text-sm text-[color:var(--color-muted-foreground)] truncate">
                 {item.employee} • {item.department}
               </p>
+              {isDateRange && (item as any).days_worked && (
+                <p className="text-xs text-[color:var(--color-muted-foreground)] truncate">
+                  {(item as any).days_worked} days worked
+                </p>
+              )}
             </div>
           </div>
           <div className="ml-2 flex-shrink-0">
@@ -236,19 +355,31 @@ export default function WorkHoursView({
         </div>
 
         {/* Time Stats Grid */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className={`grid gap-4 mb-4 ${isDateRange ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <div className="text-center">
             <div className={`text-lg font-bold ${item.time_in ? 'text-[color:var(--color-success)]' : 'text-[color:var(--color-muted-foreground)]'}`}>
               {formatTime(item.time_in)}
             </div>
-            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Time In</div>
+            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
+              {isDateRange ? 'First In' : 'Time In'}
+            </div>
           </div>
           <div className="text-center">
             <div className={`text-lg font-bold ${item.time_out ? 'text-[color:var(--color-error)]' : 'text-[color:var(--color-muted-foreground)]'}`}>
               {formatTime(item.time_out)}
             </div>
-            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Time Out</div>
+            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
+              {isDateRange ? 'Last Out' : 'Time Out'}
+            </div>
           </div>
+          {isDateRange && (
+            <div className="text-center">
+              <div className="text-lg font-bold text-[color:var(--color-info)]">
+                {(item as any).days_worked || 0}
+              </div>
+              <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Days Worked</div>
+            </div>
+          )}
           <div className="text-center">
             <div className={`text-lg font-bold ${
               item.total_hours >= 8 ? 'text-[color:var(--color-success)]' : 
@@ -257,7 +388,9 @@ export default function WorkHoursView({
             }`}>
               {formatHours(item.total_hours)}h
             </div>
-            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">Total Hours</div>
+            <div className="text-xs text-[color:var(--color-muted-foreground)] uppercase tracking-wide">
+              {isDateRange ? 'Total Hours' : 'Total Hours'}
+            </div>
           </div>
         </div>
 
@@ -266,17 +399,25 @@ export default function WorkHoursView({
           <div className="flex justify-between text-sm">
             <span className="text-[color:var(--color-muted-foreground)]">Work Progress</span>
             <span className="font-medium text-[color:var(--color-card-foreground)]">
-              {Math.round((item.total_hours / 8) * 100)}% of 8h
+              {isDateRange 
+                ? `${formatHours(item.total_hours)}h total (${formatHours((item as any).average_hours_per_day || 0)}h/day avg)`
+                : `${Math.round((item.total_hours / 8) * 100)}% of 8h`
+              }
             </span>
           </div>
           <div className="w-full bg-[color:var(--color-muted)] rounded-full h-3">
             <div 
               className={`h-3 rounded-full transition-all duration-300 ${
-                item.total_hours >= 8 ? 'bg-[color:var(--color-success)]' : 
-                item.total_hours >= 6 ? 'bg-[color:var(--color-warning)]' : 
+                item.total_hours >= (isDateRange ? (item as any).days_worked * 8 : 8) ? 'bg-[color:var(--color-success)]' : 
+                item.total_hours >= (isDateRange ? (item as any).days_worked * 6 : 6) ? 'bg-[color:var(--color-warning)]' : 
                 'bg-[color:var(--color-error)]'
               }`}
-              style={{ width: `${Math.min(100, Math.max(5, (item.total_hours / 8) * 100))}%` }}
+              style={{ 
+                width: `${Math.min(100, Math.max(5, isDateRange 
+                  ? (item.total_hours / ((item as any).days_worked * 8)) * 100
+                  : (item.total_hours / 8) * 100
+                ))}%` 
+              }}
             ></div>
           </div>
         </div>
@@ -312,41 +453,79 @@ export default function WorkHoursView({
     </div>
   );
 
-  // Date Picker Component
-  const DatePicker = () => (
-    <div className="flex items-center space-x-2">
-      <Calendar className="h-4 w-4 text-[color:var(--color-foreground)] flex-shrink-0" />
-      <label className="text-sm text-[color:var(--color-foreground)] whitespace-nowrap">Date:</label>
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => onDateChange(e.target.value)}
-        className="border border-[color:var(--color-border)] rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent bg-[color:var(--color-background)] text-[color:var(--color-foreground)]"
-      />
+  // Date Range Picker Component
+  const DateRangePicker = () => (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+      <div className="flex items-center space-x-2">
+        <CalendarDays className="h-4 w-4 text-[color:var(--color-foreground)] flex-shrink-0" />
+        <label className="text-sm text-[color:var(--color-foreground)] whitespace-nowrap">From:</label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => onStartDateChange(e.target.value)}
+          className="border border-[color:var(--color-border)] rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent bg-[color:var(--color-background)] text-[color:var(--color-foreground)]"
+        />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Calendar className="h-4 w-4 text-[color:var(--color-foreground)] flex-shrink-0" />
+        <label className="text-sm text-[color:var(--color-foreground)] whitespace-nowrap">To:</label>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => onEndDateChange(e.target.value)}
+          className="border border-[color:var(--color-border)] rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-primary)] focus:border-transparent bg-[color:var(--color-background)] text-[color:var(--color-foreground)]"
+        />
+      </div>
+    </div>
+  );
+
+  // Summary Stats Component
+  const SummaryStats = () => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
+        <div className="text-2xl font-bold text-[color:var(--color-primary)]">{summaryStats.totalEmployees}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Total Employees</div>
+      </div>
+      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
+        <div className="text-2xl font-bold text-[color:var(--color-success)]">{formatHours(summaryStats.totalHours)}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Total Hours</div>
+      </div>
+      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
+        <div className="text-2xl font-bold text-[color:var(--color-warning)]">{summaryStats.currentlyClocked}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Currently Clocked In</div>
+      </div>
+      <div className="bg-[color:var(--color-card)] p-4 rounded-lg border border-[color:var(--color-border)]">
+        <div className="text-2xl font-bold text-[color:var(--color-info)]">{formatHours(summaryStats.avgHoursPerEmployee)}</div>
+        <div className="text-sm text-[color:var(--color-muted-foreground)]">Avg Hours/Employee</div>
+      </div>
     </div>
   );
 
   return (
     <div className="space-y-4 bg-[color:var(--color-background)] text-[color:var(--color-foreground)] transition-colors duration-200 pb-6">
-      {/* Header with Date Picker and View Toggle */}
+      {/* Header with Date Range Picker and View Toggle */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-semibold text-[color:var(--color-foreground)]">Work Hours Report</h1>
             <p className="text-[color:var(--color-muted-foreground)] mt-1">
-              {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} employee work hours for {date}
+              {viewMode === 'table' ? 'Tabular view of' : 'Card view of'} employee work hours 
+              {isDateRange ? ` from ${startDate} to ${endDate}` : ` for ${startDate}`}
             </p>
           </div>
-          <DatePicker />
+          <DateRangePicker />
         </div>
         <ViewToggle />
       </div>
+
+      {/* Summary Statistics */}
+      {processedData.length > 0 && !loading && <SummaryStats />}
 
       {/* Content */}
       {viewMode === 'table' ? (
         <div className="bg-[color:var(--color-card)] rounded-lg shadow-[var(--shadow)] border border-[color:var(--color-border)] overflow-hidden">
           <DataTable
-            data={workHours}
+            data={processedData}
             columns={columns}
             searchableFields={searchableFields}
             filters={filters}
@@ -355,19 +534,19 @@ export default function WorkHoursView({
             defaultSortField="name"
             defaultSortDirection="asc"
             defaultItemsPerPage={25}
-            emptyMessage={`No work hours data found for ${date}`}
+            emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
             className="min-w-[1200px]"
           />
         </div>
       ) : (
         <CardGrid
-          data={workHours}
+          data={processedData}
           searchableFields={searchableFields}
           filters={filters}
           loading={loading}
           error={error}
           defaultItemsPerPage={24}
-          emptyMessage={`No work hours data found for ${date}`}
+          emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
           renderCard={renderCard}
           gridCols={{ sm: 1, md: 2, lg: 3, xl: 4, '2xl': 5 }}
           onCardClick={(item) => {

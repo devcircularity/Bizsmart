@@ -35,13 +35,13 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className="bg-gray-50">
+      <body>
         <AuthProvider>
           {isAuthPage ? (
             // Just show children (i.e. login page) without layout
             children
           ) : (
-            <div className="min-h-screen">
+            <div className="min-h-screen bg-[color:var(--color-background)]">
               <Topbar onMenuClick={toggleSidebar} />
               <div className="flex pt-16">
                 <Sidebar open={sidebarOpen} onClose={closeSidebar} />
