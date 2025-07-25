@@ -11,8 +11,6 @@ export interface WorkHour {
   time_in: string;
   time_out: string;
   total_hours: number;
-  days_worked?: number;
-  average_hours_per_day?: number;
   is_currently_clocked_in?: boolean;
 }
 
@@ -46,7 +44,7 @@ interface EmployeeAttendanceExportData {
   };
 }
 
-// EXISTING FUNCTION - Keep as is
+// EXISTING FUNCTION - Updated to remove days/average columns
 export const exportWorkHoursToPDF = async (config: ExportConfig) => {
   try {
     console.log('Starting PDF export with config:', config);
@@ -160,32 +158,30 @@ export const exportWorkHoursToPDF = async (config: ExportConfig) => {
 
     console.log('Preparing main data table...');
 
-    // Prepare table columns based on date range (optimized for landscape)
+    // Prepare table columns - REMOVED days_worked and average_hours_per_day columns
     const columns = [
       { header: 'Employee ID', dataKey: 'employee' },
       { header: 'Name', dataKey: 'name' },
-      ...(isDateRange ? [{ header: 'Days', dataKey: 'days_worked' }] : []),
+      { header: 'Date', dataKey: 'date' },
       { header: 'Department', dataKey: 'department' },
       { header: 'Designation', dataKey: 'designation' },
-      { header: isDateRange ? 'First In' : 'Time In', dataKey: 'time_in' },
-      { header: isDateRange ? 'Last Out' : 'Time Out', dataKey: 'time_out' },
-      { header: 'Total Hours', dataKey: 'total_hours' },
-      ...(isDateRange ? [{ header: 'Avg/Day', dataKey: 'average_hours_per_day' }] : []),
+      { header: 'Time In', dataKey: 'time_in' },
+      { header: 'Time Out', dataKey: 'time_out' },
+      { header: 'Hours Worked', dataKey: 'total_hours' },
       { header: 'Status', dataKey: 'status' }
     ];
 
-    // Prepare table data
+    // Prepare table data - REMOVED days_worked and average_hours_per_day
     const tableData = data.map(row => ({
       employee: row.employee || '',
       name: row.name || '',
-      ...(isDateRange ? { days_worked: row.days_worked?.toString() || '0' } : {}),
+      date: row.date ? formatDate(row.date) : '-',
       department: row.department || '',
       designation: row.designation || '',
       time_in: row.time_in || '-',
       time_out: row.time_out || '-',
       total_hours: row.total_hours ? row.total_hours.toFixed(2) + 'h' : '0.00h',
-      ...(isDateRange ? { average_hours_per_day: row.average_hours_per_day?.toFixed(2) + 'h' || '0.00h' } : {}),
-      status: row.is_currently_clocked_in ? 'Clocked In' : (row.time_out ? 'Clocked Out' : 'No Check-in')
+      status: row.is_currently_clocked_in ? 'Clocked In' : (row.time_out ? 'Clocked Out' : 'No Check-out')
     }));
 
     console.log('Table data prepared:', tableData.length, 'rows');
@@ -231,15 +227,14 @@ export const exportWorkHoursToPDF = async (config: ExportConfig) => {
         },
         columnStyles: {
           0: { cellWidth: 25 }, // Employee ID
-          1: { cellWidth: 45 }, // Name (wider in landscape)
-          ...(isDateRange ? { 2: { cellWidth: 18, halign: 'center' } } : {}), // Days Worked
-          [isDateRange ? 2 : 2]: { cellWidth: 35 }, // Department
-          [isDateRange ? 3 : 3]: { cellWidth: 35 }, // Designation
-          [isDateRange ? 4 : 4]: { cellWidth: 22, halign: 'center' }, // Time In
-          [isDateRange ? 5 : 5]: { cellWidth: 22, halign: 'center' }, // Time Out
-          [isDateRange ? 6 : 6]: { cellWidth: 25, halign: 'right' }, // Total Hours
-          ...(isDateRange ? { 7: { cellWidth: 22, halign: 'right' } } : {}), // Avg/Day
-          [isDateRange ? 8 : 7]: { cellWidth: 28 } // Status
+          1: { cellWidth: 45 }, // Name
+          2: { cellWidth: 25 }, // Date
+          3: { cellWidth: 35 }, // Department
+          4: { cellWidth: 35 }, // Designation
+          5: { cellWidth: 22, halign: 'center' }, // Time In
+          6: { cellWidth: 22, halign: 'center' }, // Time Out
+          7: { cellWidth: 25, halign: 'right' }, // Hours Worked
+          8: { cellWidth: 28 } // Status
         }
       });
 
