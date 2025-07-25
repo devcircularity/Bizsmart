@@ -19,8 +19,9 @@ interface CardGridProps<T = any> {
   error?: string;
   defaultItemsPerPage?: number;
   emptyMessage?: string;
-  additionalControls?: ReactNode;
+  additionalControls?: ReactNode | ((filteredData: T[]) => ReactNode);
   onCardClick?: (item: T, index: number) => void;
+  onFiltersChange?: (filters: Record<string, string>) => void;
   className?: string;
   cardClassName?: string;
   renderCard: (item: T, index: number) => ReactNode;
@@ -43,6 +44,7 @@ export default function CardGrid<T = any>({
   emptyMessage = 'No items found',
   additionalControls,
   onCardClick,
+  onFiltersChange,
   className = '',
   cardClassName = '',
   renderCard,
@@ -74,6 +76,17 @@ export default function CardGrid<T = any>({
       return matchesSearch && matchesFilters;
     });
   }, [data, searchTerm, filterValues, searchableFields, filters]);
+
+  // Notify parent component of filter changes
+  React.useEffect(() => {
+    if (onFiltersChange) {
+      const activeFilters = { ...filterValues };
+      if (searchTerm) {
+        activeFilters.search = searchTerm;
+      }
+      onFiltersChange(activeFilters);
+    }
+  }, [filterValues, searchTerm, onFiltersChange]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -184,8 +197,11 @@ export default function CardGrid<T = any>({
             </select>
           </div>
 
-          {/* Additional controls */}
-          {additionalControls}
+          {/* Additional controls - FIXED TO HANDLE FUNCTION */}
+          {typeof additionalControls === 'function' 
+            ? additionalControls(filteredData)
+            : additionalControls
+          }
         </div>
         
         <div className="text-sm text-[color:var(--color-muted-foreground)] whitespace-nowrap">

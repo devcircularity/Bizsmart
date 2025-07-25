@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, ReactNode } from 'react';
+import React, { useState, useMemo, ReactNode, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Types
@@ -30,8 +30,9 @@ interface DataTableProps<T = any> {
   defaultSortDirection?: 'asc' | 'desc';
   defaultItemsPerPage?: number;
   emptyMessage?: string;
-  additionalControls?: ReactNode;
+  additionalControls?: ReactNode | ((filteredData: T[]) => ReactNode);
   onRowClick?: (row: T, index: number) => void;
+  onFiltersChange?: (filters: Record<string, string>) => void;
   className?: string;
 }
 
@@ -48,6 +49,7 @@ export default function DataTable<T = any>({
   emptyMessage = 'No data found',
   additionalControls,
   onRowClick,
+  onFiltersChange,
   className = ''
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +96,17 @@ export default function DataTable<T = any>({
 
     return filtered;
   }, [data, searchTerm, sortField, sortDirection, filterValues, searchableFields, filters]);
+
+  // Notify parent component of filter changes
+  useEffect(() => {
+    if (onFiltersChange) {
+      const activeFilters = { ...filterValues };
+      if (searchTerm) {
+        activeFilters.search = searchTerm;
+      }
+      onFiltersChange(activeFilters);
+    }
+  }, [filterValues, searchTerm, onFiltersChange]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
@@ -200,7 +213,10 @@ export default function DataTable<T = any>({
           </div>
 
           {/* Additional controls */}
-          {additionalControls}
+          {typeof additionalControls === 'function' 
+            ? additionalControls(filteredAndSortedData)
+            : additionalControls
+          }
         </div>
         
         <div className="text-sm text-[color:var(--color-foreground)] whitespace-nowrap">

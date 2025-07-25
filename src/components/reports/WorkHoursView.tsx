@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Grid, List, Calendar, Clock, CalendarDays } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Grid, List, Calendar, Clock, CalendarDays, Download } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import CardGrid from '../common/CardGrid';
+import { exportWorkHoursToPDF } from '../../utils/pdfExport';
 
 export interface WorkHour {
   employee: string;
@@ -37,6 +38,8 @@ export default function WorkHoursView({
   error 
 }: WorkHoursViewProps) {
   const [viewMode, setViewMode] = React.useState<'table' | 'cards'>('table');
+  const [isExporting, setIsExporting] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
 
   // Check if we're showing a date range
   const isDateRange = startDate !== endDate;
@@ -109,7 +112,7 @@ export default function WorkHoursView({
     return dateList.map(date => ({ value: date!, label: new Date(date!).toLocaleDateString() }));
   }, [workHours, isDateRange]);
 
-  // Calculate summary statistics
+  // Calculate summary statistics based on processed data
   const summaryStats = useMemo(() => {
     const totalEmployees = new Set(processedData.map(wh => wh.employee)).size;
     const totalHours = processedData.reduce((sum, wh) => sum + wh.total_hours, 0);
@@ -177,6 +180,76 @@ export default function WorkHoursView({
     if (hours >= 8) return 'bg-[color:var(--color-success)] text-[color:var(--color-success-foreground)]';
     if (hours >= 6) return 'bg-[color:var(--color-warning)] text-[color:var(--color-warning-foreground)]';
     return 'bg-[color:var(--color-error)] text-[color:var(--color-error-foreground)]';
+  };
+
+  // Handle PDF export
+  const handleExportPDF = async (dataToExport: WorkHour[]) => {
+    console.log('Export button clicked, data to export:', dataToExport);
+    
+    setIsExporting(true);
+    try {
+      if (!dataToExport || dataToExport.length === 0) {
+        throw new Error('No data available to export');
+      }
+
+      console.log('Calling exportWorkHoursToPDF...');
+      
+      await exportWorkHoursToPDF({
+        data: dataToExport,
+        startDate,
+        endDate,
+        isDateRange,
+        filters: currentFilters,
+        summaryStats: {
+          totalEmployees: new Set(dataToExport.map(wh => wh.employee)).size,
+          totalHours: dataToExport.reduce((sum, wh) => sum + wh.total_hours, 0),
+          currentlyClocked: dataToExport.filter(wh => wh.is_currently_clocked_in).length,
+          avgHoursPerEmployee: dataToExport.length > 0 
+            ? dataToExport.reduce((sum, wh) => sum + wh.total_hours, 0) / new Set(dataToExport.map(wh => wh.employee)).size
+            : 0
+        }
+      });
+      
+      console.log('PDF export completed successfully');
+      
+    } catch (error) {
+      console.error('Export failed with error:', error);
+      
+      let errorMessage = 'Failed to export PDF. Please try again.';
+      
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+        if (error.message.includes('No data')) {
+          errorMessage = 'No data available to export.';
+        } else if (error.message.includes('jsPDF')) {
+          errorMessage = 'PDF library error. Please refresh the page and try again.';
+        }
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export Button Component that receives filtered data directly
+  const ExportButton = ({ currentFilteredData }: { currentFilteredData: WorkHour[] }) => {
+    const dataToExport = currentFilteredData || processedData;
+    
+    return (
+      <button
+        onClick={() => handleExportPDF(dataToExport)}
+        disabled={isExporting || dataToExport.length === 0}
+        className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+          isExporting || dataToExport.length === 0
+            ? 'bg-[color:var(--color-muted)] text-[color:var(--color-muted-foreground)] border-[color:var(--color-border)] cursor-not-allowed'
+            : 'bg-[color:var(--color-accent)] text-[color:var(--color-accent-foreground)] border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/90'
+        }`}
+      >
+        <Download className="h-4 w-4 mr-2" />
+        {isExporting ? 'Exporting...' : `Export PDF (${dataToExport.length} records)`}
+      </button>
+    );
   };
 
   // Define columns for the DataTable
@@ -515,7 +588,9 @@ export default function WorkHoursView({
           </div>
           <DateRangePicker />
         </div>
-        <ViewToggle />
+        <div className="flex items-center gap-3">
+          <ViewToggle />
+        </div>
       </div>
 
       {/* Summary Statistics */}
@@ -536,6 +611,10 @@ export default function WorkHoursView({
             defaultItemsPerPage={25}
             emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
             className="min-w-[1200px]"
+            additionalControls={(filteredData) => (
+              <ExportButton currentFilteredData={filteredData} />
+            )}
+            onFiltersChange={setCurrentFilters}
           />
         </div>
       ) : (
@@ -549,10 +628,14 @@ export default function WorkHoursView({
           emptyMessage={`No work hours data found for ${isDateRange ? 'the selected date range' : startDate}`}
           renderCard={renderCard}
           gridCols={{ sm: 1, md: 2, lg: 3, xl: 4, '2xl': 5 }}
+          additionalControls={(filteredData) => (
+            <ExportButton currentFilteredData={filteredData} />
+          )}
           onCardClick={(item) => {
             console.log('Card clicked:', item);
             // You can add navigation or modal logic here
           }}
+          onFiltersChange={setCurrentFilters}
         />
       )}
     </div>
