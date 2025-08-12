@@ -52,7 +52,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               className="text-xl font-semibold hidden sm:block"
               style={{ color: 'var(--foreground)' }}
             >
-              BizSmart HR Reports
+              Bizsmart HR Reports
             </h1>
           </div>
         </div>

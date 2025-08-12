@@ -72,7 +72,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               className="text-lg font-semibold"
               style={{ color: 'var(--foreground)' }}
             >
-              BizSmart HR
+              Bizsmart HR
             </span>
           </div>
           <button
@@ -164,7 +164,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 className="text-xs font-medium"
                 style={{ color: 'var(--primary)' }}
               >
-                BizSmart HR
+                Bizsmart HR
               </div>
               <div 
                 className="text-xs"
@@ -189,7 +189,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             className="text-xs text-center"
             style={{ color: 'color-mix(in srgb, var(--foreground) 60%, transparent)' }}
           >
-            © 2025 BizSmart Enterprises
+            © 2025 Bizsmart Enterprises
           </div>
         </div>
       </aside>

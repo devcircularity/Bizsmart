@@ -77,7 +77,7 @@ export const exportWorkHoursToPDF = async (config: ExportConfig) => {
     // Add company header
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('BizSmart Enterprises Ltd', pageWidth - 15, 20, { align: 'right' });
+    doc.text('Bizsmart Enterprises Ltd', pageWidth - 15, 20, { align: 'right' });
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
@@ -258,7 +258,7 @@ export const exportWorkHoursToPDF = async (config: ExportConfig) => {
         { align: 'right' }
       );
       doc.text(
-        '© 2025 BizSmart Enterprises Ltd',
+        '© 2025 Bizsmart Enterprises Ltd',
         15,
         pageHeight - 10
       );
@@ -310,7 +310,7 @@ export const exportEmployeeAttendanceToPDF = async (data: EmployeeAttendanceExpo
     // Add company header
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('BizSmart Enterprises Ltd', pageWidth - 15, 20, { align: 'right' });
+    doc.text('Bizsmart Enterprises Ltd', pageWidth - 15, 20, { align: 'right' });
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
@@ -466,7 +466,7 @@ export const exportEmployeeAttendanceToPDF = async (data: EmployeeAttendanceExpo
         { align: 'right' }
       );
       doc.text(
-        '© 2025 BizSmart Enterprises Ltd',
+        '© 2025 Bizsmart Enterprises Ltd',
         15,
         pageHeight - 10
       );
